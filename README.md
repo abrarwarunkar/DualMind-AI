@@ -1,34 +1,35 @@
 <div align="center">
 
-# 🧠 ResearchMind AI
+# 🧠 DualMind
 
-### AI-Powered Multi-LLM Research Assistant
+### Two Minds. One Truth.
 
-*Perplexity meets Notion — powered by GPT-4o & Claude 3.5*
+*Dual-LLM research platform powered by Groq — Llama 3.3 70B & GPT-OSS 120B*
 
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Node](https://img.shields.io/badge/node-%3E%3D20-green.svg)](https://nodejs.org)
-[![Docker](https://img.shields.io/badge/docker-ready-blue.svg)](Dockerfile)
+[![Groq](https://img.shields.io/badge/Groq-Ultra--Fast%20Inference-orange.svg)](https://groq.com)
 
 </div>
 
 ---
 
-## 🎯 What is ResearchMind AI?
+## 🎯 What is DualMind?
 
-ResearchMind AI is a **production-ready SaaS platform** that supercharges research by querying multiple Large Language Models simultaneously, grounding responses in real web sources, and detecting hallucinations — all within a beautiful, Notion-style workspace.
+DualMind is a **dual-LLM research platform** that queries two different AI models simultaneously, grounds responses in real web sources and academic papers, and detects hallucinations through cross-model validation — all within a premium, dark-themed workspace.
 
 ### Key Capabilities
 
 | Feature | Description |
 |---|---|
-| 🔬 **Dual LLM Analysis** | Query GPT-4o and Claude 3.5 Sonnet side-by-side |
+| 🔬 **Dual LLM Analysis** | Query Llama 3.3 70B (Meta) and GPT-OSS 120B (OpenAI) side-by-side via Groq |
 | 🌐 **Web-Grounded Research** | Fetch and scrape top sources, cite inline |
+| 📚 **Academic Paper Search** | Search arXiv and Semantic Scholar for peer-reviewed papers |
 | 🛡️ **Hallucination Detection** | Cross-model validation + source verification |
+| 🧠 **Knowledge Graph** | Auto-extract entities and visualize research connections |
+| 🔗 **Research Chains** | Chain follow-up questions with full context preservation |
 | 📑 **Structured Summaries** | Title, key points, citations, confidence scores |
 | 📤 **Multi-Format Export** | PDF (formatted) and Markdown downloads |
-| 🔗 **GitHub Sync** | Push research notes directly to your repos |
-| 🔐 **Auth & Workspaces** | JWT auth, role-based access (Basic/Pro) |
 | 🌙 **Dark Mode** | Premium glassmorphism dark-first UI |
 
 ---
@@ -37,25 +38,25 @@ ResearchMind AI is a **production-ready SaaS platform** that supercharges resear
 
 ```
 ┌─────────────────────────────────────────────────┐
-│                   NGINX (Reverse Proxy)         │
-│              :80 / :443 (HTTPS)                 │
+│                   Frontend                      │
+│              Next.js :3000                      │
 ├──────────────────┬──────────────────────────────┤
-│   Frontend       │        Backend API           │
-│   Next.js :3000  │        Express :5000         │
-│                  │                              │
-│   • Landing      │   • Auth (JWT + bcrypt)      │
-│   • Research     │   • Research Pipeline        │
-│   • Dashboard    │   • LLM Service Layer        │
-│   • Notes        │   • Search + Scraping        │
-│                  │   • Hallucination Engine      │
-│                  │   • Export (PDF/MD)           │
-│                  │   • GitHub Sync              │
+│   Pages          │        Backend API           │
+│                  │        Express :5000          │
+│   • Landing      │                              │
+│   • Research     │   • Auth (JWT + bcrypt)       │
+│   • Knowledge    │   • Research Pipeline         │
+│     Graph        │   • LLM Service Layer         │
+│   • Dashboard    │   • Search + Scraping         │
+│                  │   • Academic Paper Search      │
+│                  │   • Hallucination Engine       │
+│                  │   • Export (PDF/MD)            │
 ├──────────────────┴──────────────────────────────┤
-│              MongoDB (Atlas / Docker)            │
-│       Users │ ResearchSessions │ Notes          │
+│              MongoDB (Atlas / Local)             │
+│       Users │ ResearchSessions                  │
 ├─────────────────────────────────────────────────┤
 │          External APIs                          │
-│   OpenAI │ Anthropic │ SerpAPI │ GitHub         │
+│   Groq │ arXiv │ Semantic Scholar │ SerpAPI     │
 └─────────────────────────────────────────────────┘
 ```
 
@@ -67,15 +68,15 @@ ResearchMind AI is a **production-ready SaaS platform** that supercharges resear
 
 - Node.js ≥ 20
 - MongoDB (local or Atlas)
-- API keys: OpenAI, Anthropic, SerpAPI (optional for dev mode)
+- Groq API key ([console.groq.com](https://console.groq.com))
 
 ### 1. Clone & Configure
 
 ```bash
-git clone https://github.com/your-username/researchmind-ai.git
-cd researchmind-ai
+git clone https://github.com/abrarwarunkar/DualMind-AI.git
+cd DualMind-AI
 cp .env.example .env
-# Edit .env with your API keys and MongoDB URI
+# Edit .env with your Groq API key and MongoDB URI
 ```
 
 ### 2. Install & Run Backend
@@ -100,21 +101,6 @@ Navigate to `http://localhost:3000` — register an account and start researchin
 
 ---
 
-## 🐳 Docker Deployment
-
-```bash
-# Start everything (MongoDB + Redis + App + NGINX)
-docker-compose up -d --build
-
-# View logs
-docker-compose logs -f
-
-# Stop
-docker-compose down
-```
-
----
-
 ## 📊 API Reference
 
 | Method | Endpoint | Description | Auth |
@@ -128,11 +114,6 @@ docker-compose down
 | `DELETE` | `/api/research/:id` | Delete session | ✅ |
 | `POST` | `/api/export/pdf` | Export to PDF | ✅ |
 | `POST` | `/api/export/markdown` | Export to Markdown | ✅ |
-| `POST` | `/api/github/connect` | Connect GitHub | ✅ |
-| `POST` | `/api/github/sync` | Sync to repo | ✅ |
-| `GET` | `/api/github/repos` | List repos | ✅ |
-| `GET` | `/api/notes` | List notes | ✅ |
-| `PUT` | `/api/notes/:id` | Update note | ✅ |
 
 ---
 
@@ -142,66 +123,36 @@ docker-compose down
 # Server
 NODE_ENV=development
 PORT=5000
-MONGODB_URI=mongodb://localhost:27017/researchmind
+MONGODB_URI=mongodb://localhost:27017/dualmind
 JWT_SECRET=your-secret-key
 JWT_EXPIRE=7d
 
-# AI APIs
-OPENAI_API_KEY=sk-...
-ANTHROPIC_API_KEY=sk-ant-...
-SERPAPI_KEY=...
+# AI (Groq)
+GROQ_API_KEY=gsk_...
 
-# GitHub (optional)
-GITHUB_CLIENT_ID=...
-GITHUB_CLIENT_SECRET=...
+# Search (optional)
+SERPAPI_KEY=...
 ```
 
 > **Dev Mode:** The app works without API keys using mock responses — perfect for exploring the UI and testing locally!
 
 ---
 
-## 🧪 Testing
-
-```bash
-cd server
-npm test          # Run all tests
-npm run test:watch  # Watch mode
-```
-
-Tests cover:
-- ✅ Authentication (register, login, JWT validation)
-- ✅ LLM Service (mock responses)
-- ✅ Search & Scraping (HTML cleaning)
-- ✅ Hallucination Detection
-- ✅ Export (PDF generation, Markdown formatting)
-
----
-
-## ☁️ AWS Production Deployment
-
-1. **EC2**: Launch Ubuntu instance, install Docker
-2. **MongoDB Atlas**: Create cluster, whitelist EC2 IP
-3. **Domain**: Point DNS to EC2 Elastic IP
-4. **SSL**: Add Let's Encrypt via Certbot
-5. **CI/CD**: Configure GitHub Secrets (`EC2_HOST`, `EC2_USER`, `EC2_SSH_KEY`)
-6. **Deploy**: Push to `main` branch → auto-deploys via GitHub Actions
-
----
-
 ## 📂 Project Structure
 
 ```
-ResearchMind AI/
+DualMind/
 ├── client/                    # Next.js Frontend
 │   ├── app/                   # App Router pages
-│   │   ├── dashboard/         # Workspace dashboard
+│   │   ├── dashboard/         # Research dashboard
 │   │   ├── login/             # Auth login
 │   │   ├── register/          # Auth register
 │   │   ├── research/          # Research query + detail
+│   │   ├── knowledge-graph/   # Knowledge graph visualization
 │   │   ├── globals.css        # Design system
 │   │   ├── layout.js          # Root layout
 │   │   └── page.js            # Landing page
-│   ├── components/            # Reusable components
+│   ├── components/            # Reusable components (Navbar)
 │   ├── context/               # AuthContext
 │   └── lib/                   # API client
 ├── server/                    # Express Backend
@@ -211,18 +162,13 @@ ResearchMind AI/
 │   ├── models/                # Mongoose schemas
 │   ├── routes/                # Express routes
 │   ├── services/              # Business logic
-│   │   ├── llmService.js      # Multi-LLM abstraction
+│   │   ├── llmService.js      # Dual-LLM (Llama 70B + GPT-OSS 120B)
 │   │   ├── searchService.js   # Web search + scraping
+│   │   ├── academicSearchService.js  # arXiv + Semantic Scholar
 │   │   ├── summaryService.js  # Grounded summarization
-│   │   ├── hallucinationService.js  # Hallucination detection
-│   │   ├── exportService.js   # PDF + Markdown
-│   │   └── githubService.js   # GitHub sync
-│   ├── utils/                 # Helpers + prompts
-│   └── __tests__/             # Jest tests
-├── nginx/                     # NGINX config
-├── .github/workflows/         # CI/CD pipeline
-├── Dockerfile                 # Multi-stage build
-├── docker-compose.yml         # Full stack
+│   │   ├── hallucinationService.js   # Hallucination detection
+│   │   └── exportService.js   # PDF + Markdown export
+│   └── utils/                 # Helpers + prompts
 └── README.md                  # This file
 ```
 
@@ -239,17 +185,6 @@ ResearchMind AI/
 
 ---
 
-## 📈 Scalability
-
-- Modular service architecture
-- Stateless backend (horizontal scaling ready)
-- Separate AI service layer
-- MongoDB indexes on userId + createdAt
-- NGINX load balancing ready
-- Docker container orchestration
-
----
-
 ## 📄 License
 
 MIT License — see [LICENSE](LICENSE) for details.
@@ -258,6 +193,8 @@ MIT License — see [LICENSE](LICENSE) for details.
 
 <div align="center">
 
-**Built with ❤️ using GPT-4o, Claude 3.5, Next.js, Express, and MongoDB**
+**Built with ❤️ using Llama 3.3 70B, GPT-OSS 120B, Groq, Next.js, Express, and MongoDB**
+
+*Two Minds. One Truth.*
 
 </div>
