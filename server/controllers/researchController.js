@@ -12,7 +12,7 @@ const ApiResponse = require('../utils/apiResponse');
 const researchSchema = Joi.object({
     query: Joi.string().trim().min(5).max(1000).required(),
     compareMode: Joi.boolean().default(true),
-    parentSessionId: Joi.string().hex().length(24).optional().allow(null, ''),
+    parentSessionId: Joi.string().uuid().optional().allow(null, ''),
 });
 
 /**
@@ -31,8 +31,8 @@ exports.createResearch = async (req, res, next) => {
         let chainDepth = 0;
         if (parentSessionId) {
             parentSession = await ResearchSession.findOne({
-                _id: parentSessionId,
-                userId: req.user._id,
+                id: parentSessionId,
+                userId: req.user.id,
             });
             if (!parentSession) {
                 return ApiResponse.notFound(res, 'Parent research session');
@@ -45,7 +45,7 @@ exports.createResearch = async (req, res, next) => {
 
         // 1. Create pending session
         const session = await ResearchSession.create({
-            userId: req.user._id,
+            userId: req.user.id,
             query,
             compareMode,
             parentSessionId: parentSessionId || null,
@@ -62,7 +62,6 @@ exports.createResearch = async (req, res, next) => {
         // 3. Query both LLMs (with follow-up context if chain)
         let gptResponse, claudeResponse;
         if (parentSession) {
-            // Use follow-up prompt with parent context
             const previousContext = {
                 title: parentSession.groundedSummary?.title || parentSession.query,
                 summary: parentSession.groundedSummary?.summary || '',
@@ -115,8 +114,8 @@ exports.createResearch = async (req, res, next) => {
 
         // 8. Auto-create a note from the session
         await Note.create({
-            sessionId: session._id,
-            userId: req.user._id,
+            sessionId: session.id,
+            userId: req.user.id,
             title: groundedSummary.title || `Research: ${query}`,
             content: { summary: groundedSummary },
             markdownVersion: '',
@@ -139,17 +138,17 @@ exports.getResearchSessions = async (req, res, next) => {
         const skip = (page - 1) * limit;
         const search = req.query.search;
 
-        let filter = { userId: req.user._id };
+        let filter = { userId: req.user.id };
         if (search) {
             filter.$text = { $search: search };
         }
 
         const [sessions, total] = await Promise.all([
-            ResearchSession.find(filter)
-                .sort({ createdAt: -1 })
-                .skip(skip)
-                .limit(limit)
-                .select('-sources -gptResponse.raw -claudeResponse.raw'),
+            ResearchSession.find(filter, {
+                sort: { createdAt: -1 },
+                skip,
+                limit,
+            }),
             ResearchSession.countDocuments(filter),
         ]);
 
@@ -174,8 +173,8 @@ exports.getResearchSessions = async (req, res, next) => {
 exports.getResearchSession = async (req, res, next) => {
     try {
         const session = await ResearchSession.findOne({
-            _id: req.params.id,
-            userId: req.user._id,
+            id: req.params.id,
+            userId: req.user.id,
         });
 
         if (!session) {
@@ -195,8 +194,8 @@ exports.getResearchSession = async (req, res, next) => {
 exports.getResearchChain = async (req, res, next) => {
     try {
         const session = await ResearchSession.findOne({
-            _id: req.params.id,
-            userId: req.user._id,
+            id: req.params.id,
+            userId: req.user.id,
         });
 
         if (!session) {
@@ -204,45 +203,48 @@ exports.getResearchChain = async (req, res, next) => {
         }
 
         // Walk up the chain to find the root
-        let rootId = session._id;
+        let rootId = session.id;
         let current = session;
-        const visited = new Set([rootId.toString()]);
+        const visited = new Set([rootId]);
 
         while (current.parentSessionId) {
-            if (visited.has(current.parentSessionId.toString())) break;
-            visited.add(current.parentSessionId.toString());
+            if (visited.has(current.parentSessionId)) break;
+            visited.add(current.parentSessionId);
             const parent = await ResearchSession.findOne({
-                _id: current.parentSessionId,
-                userId: req.user._id,
+                id: current.parentSessionId,
+                userId: req.user.id,
             });
             if (!parent) break;
-            rootId = parent._id;
+            rootId = parent.id;
             current = parent;
         }
 
         // Now fetch all sessions in this chain from root downward
         const allSessions = await ResearchSession.find({
-            userId: req.user._id,
+            userId: req.user.id,
             status: 'completed',
-        }).select('query parentSessionId chainDepth groundedSummary.title createdAt status');
+        }, {
+            select: 'id, query, parent_session_id, chain_depth, grounded_summary, created_at, status',
+        });
 
         // Build the chain starting from root
         const chain = [];
         const buildChain = (parentId) => {
             const children = allSessions.filter(
-                (s) => (s.parentSessionId?.toString() || null) === (parentId?.toString() || null)
-                    && (parentId ? true : s._id.toString() === rootId.toString())
+                (s) => (s.parentSessionId || null) === (parentId || null)
+                    && (parentId ? true : s.id === rootId)
             );
             for (const child of children) {
                 chain.push({
-                    _id: child._id,
+                    _id: child.id,
+                    id: child.id,
                     query: child.query,
                     title: child.groundedSummary?.title || child.query,
                     chainDepth: child.chainDepth || 0,
                     createdAt: child.createdAt,
-                    isCurrent: child._id.toString() === req.params.id,
+                    isCurrent: child.id === req.params.id,
                 });
-                buildChain(child._id);
+                buildChain(child.id);
             }
         };
 
@@ -250,7 +252,8 @@ exports.getResearchChain = async (req, res, next) => {
         // If chain is empty (root session has no parent), add the root
         if (chain.length === 0) {
             chain.push({
-                _id: session._id,
+                _id: session.id,
+                id: session.id,
                 query: session.query,
                 title: session.groundedSummary?.title || session.query,
                 chainDepth: session.chainDepth || 0,
@@ -275,16 +278,16 @@ exports.getResearchChain = async (req, res, next) => {
 exports.deleteResearchSession = async (req, res, next) => {
     try {
         const session = await ResearchSession.findOneAndDelete({
-            _id: req.params.id,
-            userId: req.user._id,
+            id: req.params.id,
+            userId: req.user.id,
         });
 
         if (!session) {
             return ApiResponse.notFound(res, 'Research session');
         }
 
-        // Also delete associated notes
-        await Note.deleteMany({ sessionId: session._id });
+        // Also delete associated notes (CASCADE should handle this, but be explicit)
+        await Note.deleteMany({ sessionId: session.id });
 
         ApiResponse.success(res, { message: 'Research session deleted' });
     } catch (error) {

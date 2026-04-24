@@ -20,7 +20,7 @@ exports.connectGitHub = async (req, res, next) => {
         }
 
         // Save token
-        await User.findByIdAndUpdate(req.user._id, { githubToken: token });
+        await User.findByIdAndUpdate(req.user.id, { githubToken: token });
 
         ApiResponse.success(res, {
             message: 'GitHub account connected',
@@ -44,15 +44,15 @@ exports.syncToGitHub = async (req, res, next) => {
         }
 
         // Get user's GitHub token
-        const user = await User.findById(req.user._id);
+        const user = await User.findById(req.user.id);
         if (!user.githubToken) {
             return ApiResponse.badRequest(res, 'GitHub account not connected. Please connect first.');
         }
 
         // Get session
         const session = await ResearchSession.findOne({
-            _id: sessionId,
-            userId: req.user._id,
+            id: sessionId,
+            userId: req.user.id,
         });
         if (!session) return ApiResponse.notFound(res, 'Research session');
 
@@ -84,7 +84,7 @@ exports.syncToGitHub = async (req, res, next) => {
  */
 exports.listRepos = async (req, res, next) => {
     try {
-        const user = await User.findById(req.user._id);
+        const user = await User.findById(req.user.id);
         if (!user.githubToken) {
             return ApiResponse.badRequest(res, 'GitHub account not connected');
         }
@@ -102,7 +102,7 @@ exports.listRepos = async (req, res, next) => {
  */
 exports.disconnectGitHub = async (req, res, next) => {
     try {
-        await User.findByIdAndUpdate(req.user._id, { githubToken: null });
+        await User.findByIdAndUpdate(req.user.id, { githubToken: null });
         ApiResponse.success(res, { message: 'GitHub account disconnected' });
     } catch (error) {
         next(error);

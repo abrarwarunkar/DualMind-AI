@@ -35,18 +35,18 @@ exports.register = async (req, res, next) => {
         const { name, email, password } = value;
 
         // Check existing user
-        const existingUser = await User.findOne({ email });
+        const existingUser = await User.findOne({ email: email.toLowerCase() });
         if (existingUser) {
             return ApiResponse.badRequest(res, 'An account with this email already exists');
         }
 
         const user = await User.create({ name, email, password });
-        const token = generateToken(user._id);
+        const token = generateToken(user.id);
 
         ApiResponse.created(res, {
             token,
             user: {
-                id: user._id,
+                id: user.id,
                 name: user.name,
                 email: user.email,
                 subscriptionType: user.subscriptionType,
@@ -68,7 +68,7 @@ exports.login = async (req, res, next) => {
 
         const { email, password } = value;
 
-        const user = await User.findOne({ email }).select('+password');
+        const user = await User.findOne({ email: email.toLowerCase() }, { selectPassword: true });
         if (!user) {
             return ApiResponse.unauthorized(res, 'Invalid credentials');
         }
@@ -78,12 +78,12 @@ exports.login = async (req, res, next) => {
             return ApiResponse.unauthorized(res, 'Invalid credentials');
         }
 
-        const token = generateToken(user._id);
+        const token = generateToken(user.id);
 
         ApiResponse.success(res, {
             token,
             user: {
-                id: user._id,
+                id: user.id,
                 name: user.name,
                 email: user.email,
                 subscriptionType: user.subscriptionType,
@@ -100,10 +100,10 @@ exports.login = async (req, res, next) => {
  */
 exports.getMe = async (req, res, next) => {
     try {
-        const user = await User.findById(req.user._id);
+        const user = await User.findById(req.user.id);
         ApiResponse.success(res, {
             user: {
-                id: user._id,
+                id: user.id,
                 name: user.name,
                 email: user.email,
                 subscriptionType: user.subscriptionType,

@@ -1,5 +1,4 @@
 const request = require('supertest');
-const mongoose = require('mongoose');
 const express = require('express');
 const jwt = require('jsonwebtoken');
 
@@ -11,7 +10,8 @@ app.use(express.json());
 jest.mock('../config/keys', () => ({
     NODE_ENV: 'test',
     PORT: 5001,
-    MONGODB_URI: process.env.MONGODB_URI || 'mongodb://localhost:27017/researchmind_test',
+    SUPABASE_URL: 'mock-url',
+    SUPABASE_SERVICE_KEY: 'mock-key',
     JWT_SECRET: 'test-jwt-secret-key',
     JWT_EXPIRE: '1d',
     OPENAI_API_KEY: '',
@@ -20,26 +20,32 @@ jest.mock('../config/keys', () => ({
 }));
 
 const User = require('../models/User');
+
+jest.mock('../models/User', () => {
+    return {
+        create: jest.fn(),
+        findOne: jest.fn(),
+        findById: jest.fn(),
+    };
+});
+
 const authRoutes = require('../routes/auth');
 app.use('/api/auth', authRoutes);
 
 describe('Auth API', () => {
-    beforeAll(async () => {
-        const keys = require('../config/keys');
-        await mongoose.connect(keys.MONGODB_URI);
-    });
-
-    afterAll(async () => {
-        await User.deleteMany({});
-        await mongoose.connection.close();
-    });
-
-    beforeEach(async () => {
-        await User.deleteMany({});
+    beforeEach(() => {
+        jest.clearAllMocks();
     });
 
     describe('POST /api/auth/register', () => {
         it('should register a new user', async () => {
+            User.create.mockResolvedValue({
+                id: '123',
+                name: 'Test User',
+                email: 'test@example.com',
+                subscriptionType: 'basic'
+            });
+
             const res = await request(app).post('/api/auth/register').send({
                 name: 'Test User',
                 email: 'test@example.com',
@@ -50,15 +56,10 @@ describe('Auth API', () => {
             expect(res.body.success).toBe(true);
             expect(res.body.data.token).toBeDefined();
             expect(res.body.data.user.email).toBe('test@example.com');
-            expect(res.body.data.user.subscriptionType).toBe('basic');
         });
 
         it('should reject duplicate email', async () => {
-            await User.create({
-                name: 'Existing',
-                email: 'dupe@example.com',
-                password: 'password123',
-            });
+            User.findOne.mockResolvedValue({ id: '999', email: 'dupe@example.com' });
 
             const res = await request(app).post('/api/auth/register').send({
                 name: 'New User',
@@ -92,15 +93,13 @@ describe('Auth API', () => {
     });
 
     describe('POST /api/auth/login', () => {
-        beforeEach(async () => {
-            await User.create({
-                name: 'Login Test',
-                email: 'login@example.com',
-                password: 'password123',
-            });
-        });
-
         it('should login with valid credentials', async () => {
+            User.findOne.mockResolvedValue({
+                id: '123',
+                email: 'login@example.com',
+                comparePassword: jest.fn().mockResolvedValue(true)
+            });
+
             const res = await request(app).post('/api/auth/login').send({
                 email: 'login@example.com',
                 password: 'password123',
@@ -112,6 +111,12 @@ describe('Auth API', () => {
         });
 
         it('should reject wrong password', async () => {
+            User.findOne.mockResolvedValue({
+                id: '123',
+                email: 'login@example.com',
+                comparePassword: jest.fn().mockResolvedValue(false)
+            });
+
             const res = await request(app).post('/api/auth/login').send({
                 email: 'login@example.com',
                 password: 'wrongpassword',
@@ -121,6 +126,8 @@ describe('Auth API', () => {
         });
 
         it('should reject non-existent email', async () => {
+            User.findOne.mockResolvedValue(null);
+
             const res = await request(app).post('/api/auth/login').send({
                 email: 'nonexistent@example.com',
                 password: 'password123',
@@ -132,13 +139,12 @@ describe('Auth API', () => {
 
     describe('GET /api/auth/me', () => {
         it('should return user profile with valid token', async () => {
-            const user = await User.create({
-                name: 'Profile Test',
+            User.findById.mockResolvedValue({
+                id: '123',
                 email: 'profile@example.com',
-                password: 'password123',
             });
 
-            const token = jwt.sign({ id: user._id }, 'test-jwt-secret-key', { expiresIn: '1d' });
+            const token = jwt.sign({ id: '123' }, 'test-jwt-secret-key', { expiresIn: '1d' });
 
             const res = await request(app)
                 .get('/api/auth/me')

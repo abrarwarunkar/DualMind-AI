@@ -8,7 +8,7 @@ const ApiResponse = require('../utils/apiResponse');
  */
 exports.getKnowledgeGraph = async (req, res, next) => {
     try {
-        const graph = await knowledgeGraphService.buildUserGraph(req.user._id);
+        const graph = await knowledgeGraphService.buildUserGraph(req.user.id);
         ApiResponse.success(res, { graph });
     } catch (error) {
         next(error);
@@ -22,8 +22,8 @@ exports.getKnowledgeGraph = async (req, res, next) => {
 exports.extractEntities = async (req, res, next) => {
     try {
         const session = await ResearchSession.findOne({
-            _id: req.params.sessionId,
-            userId: req.user._id,
+            id: req.params.sessionId,
+            userId: req.user.id,
             status: 'completed',
         });
 

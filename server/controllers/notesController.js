@@ -8,9 +8,9 @@ const ApiResponse = require('../utils/apiResponse');
  */
 exports.getNotes = async (req, res, next) => {
     try {
-        const notes = await Note.find({ userId: req.user._id })
-            .sort({ lastEdited: -1 })
-            .select('title sessionId tags lastEdited createdAt');
+        const notes = await Note.find({ userId: req.user.id }, {
+            sort: { lastEdited: -1 },
+        });
 
         ApiResponse.success(res, { notes });
     } catch (error) {
@@ -25,8 +25,8 @@ exports.getNotes = async (req, res, next) => {
 exports.getNote = async (req, res, next) => {
     try {
         const note = await Note.findOne({
-            _id: req.params.id,
-            userId: req.user._id,
+            id: req.params.id,
+            userId: req.user.id,
         });
 
         if (!note) return ApiResponse.notFound(res, 'Note');
@@ -46,8 +46,8 @@ exports.updateNote = async (req, res, next) => {
         const { title, content, markdownVersion, tags } = req.body;
 
         const note = await Note.findOne({
-            _id: req.params.id,
-            userId: req.user._id,
+            id: req.params.id,
+            userId: req.user.id,
         });
 
         if (!note) return ApiResponse.notFound(res, 'Note');
@@ -72,8 +72,8 @@ exports.updateNote = async (req, res, next) => {
 exports.deleteNote = async (req, res, next) => {
     try {
         const note = await Note.findOneAndDelete({
-            _id: req.params.id,
-            userId: req.user._id,
+            id: req.params.id,
+            userId: req.user.id,
         });
 
         if (!note) return ApiResponse.notFound(res, 'Note');

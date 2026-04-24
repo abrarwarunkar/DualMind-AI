@@ -60,18 +60,21 @@ class KnowledgeGraphService {
      * Build aggregated knowledge graph from all user sessions
      */
     async buildUserGraph(userId) {
+        // Fetch completed sessions that have entities
         const sessions = await ResearchSession.find({
             userId,
             status: 'completed',
-            'entities.0': { $exists: true },
-        }).select('query entities groundedSummary.title createdAt');
+            entities_exist: true,
+        }, {
+            select: 'id, query, entities, grounded_summary, created_at',
+        });
 
         const nodeMap = new Map(); // name -> { id, label, category, sessions[], count }
         const edgeMap = new Map(); // "source->target" -> { source, target, weight }
 
         for (const session of sessions) {
             const sessionInfo = {
-                id: session._id,
+                id: session.id,
                 query: session.query,
                 title: session.groundedSummary?.title || session.query,
                 date: session.createdAt,
@@ -93,7 +96,7 @@ class KnowledgeGraphService {
                 const node = nodeMap.get(key);
                 node.count++;
                 // Avoid duplicate session entries
-                if (!node.sessions.find((s) => s.id.toString() === session._id.toString())) {
+                if (!node.sessions.find((s) => s.id === session.id)) {
                     node.sessions.push(sessionInfo);
                 }
             }

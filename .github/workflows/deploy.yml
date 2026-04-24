@@ -14,10 +14,10 @@ jobs:
   test-backend:
     runs-on: ubuntu-latest
     services:
-      mongodb:
-        image: mongo:7
+      redis:
+        image: redis:7-alpine
         ports:
-          - 27017:27017
+          - 6379:6379
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -30,7 +30,7 @@ jobs:
       - name: Run backend tests
         run: cd server && npm test
         env:
-          MONGODB_URI: mongodb://localhost:27017/researchmind_test
+          REDIS_URL: redis://localhost:6379
           JWT_SECRET: test-secret-key
 
   # ─── Build Frontend ───

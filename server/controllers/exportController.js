@@ -12,8 +12,8 @@ exports.exportPDF = async (req, res, next) => {
         if (!sessionId) return ApiResponse.badRequest(res, 'sessionId is required');
 
         const session = await ResearchSession.findOne({
-            _id: sessionId,
-            userId: req.user._id,
+            id: sessionId,
+            userId: req.user.id,
         });
 
         if (!session) return ApiResponse.notFound(res, 'Research session');
@@ -44,8 +44,8 @@ exports.exportMarkdown = async (req, res, next) => {
         if (!sessionId) return ApiResponse.badRequest(res, 'sessionId is required');
 
         const session = await ResearchSession.findOne({
-            _id: sessionId,
-            userId: req.user._id,
+            id: sessionId,
+            userId: req.user.id,
         });
 
         if (!session) return ApiResponse.notFound(res, 'Research session');

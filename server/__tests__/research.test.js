@@ -11,6 +11,28 @@ jest.mock('../config/keys', () => ({
     SERPAPI_KEY: '',
 }));
 
+jest.mock('axios', () => ({
+    get: jest.fn((url) => {
+        if (url.includes('duckduckgo')) {
+            return Promise.resolve({
+                data: {
+                    AbstractURL: 'https://example.com/main',
+                    Heading: 'Main Topic',
+                    Abstract: 'Main topic abstract',
+                    RelatedTopics: [
+                        { FirstURL: 'https://example.com/1', Text: 'Topic 1 text' },
+                        { FirstURL: 'https://example.com/2', Text: 'Topic 2 text' },
+                        { FirstURL: 'https://example.com/3', Text: 'Topic 3 text' },
+                        { FirstURL: 'https://example.com/4', Text: 'Topic 4 text' },
+                        { FirstURL: 'https://example.com/5', Text: 'Topic 5 text' },
+                    ]
+                }
+            });
+        }
+        return Promise.resolve({ data: '<html><body><p>Hello world. This is a much longer string so that the content exceeds the fifty character minimum requirement for the getGroundedSources test to pass correctly without being filtered out.</p><script>evil()</script></body></html>' });
+    })
+}));
+
 describe('LLM Service', () => {
     let llmService;
 

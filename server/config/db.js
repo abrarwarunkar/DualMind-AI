@@ -1,24 +1,30 @@
-const mongoose = require('mongoose');
+const { createClient } = require('@supabase/supabase-js');
 const keys = require('./keys');
+
+let supabase = null;
 
 const connectDB = async () => {
   try {
-    const conn = await mongoose.connect(keys.MONGODB_URI, {
-      maxPoolSize: 10,
-    });
-    console.log(`✅ MongoDB connected: ${conn.connection.host}`);
+    supabase = createClient(keys.SUPABASE_URL, keys.SUPABASE_SERVICE_KEY);
+
+    // Verify connection with a simple query
+    const { error } = await supabase.from('users').select('id').limit(1);
+    if (error && !error.message.includes('0 rows')) {
+      throw error;
+    }
+    console.log('✅ Supabase connected successfully');
   } catch (error) {
-    console.error(`❌ MongoDB connection error: ${error.message}`);
+    console.error(`❌ Supabase connection error: ${error.message}`);
     process.exit(1);
   }
+};
 
-  mongoose.connection.on('error', (err) => {
-    console.error(`MongoDB runtime error: ${err.message}`);
-  });
-
-  mongoose.connection.on('disconnected', () => {
-    console.warn('⚠️  MongoDB disconnected. Attempting reconnect...');
-  });
+const getSupabase = () => {
+  if (!supabase) {
+    throw new Error('Supabase not initialized. Call connectDB() first.');
+  }
+  return supabase;
 };
 
 module.exports = connectDB;
+module.exports.getSupabase = getSupabase;

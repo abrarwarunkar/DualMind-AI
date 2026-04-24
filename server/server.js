@@ -4,6 +4,8 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 const compression = require('compression');
 const connectDB = require('./config/db');
+const { connectRedis } = require('./config/redis');
+const logger = require('./utils/logger');
 const keys = require('./config/keys');
 const { generalLimiter } = require('./middleware/rateLimiter');
 const errorHandler = require('./middleware/errorHandler');
@@ -21,9 +23,7 @@ const app = express();
 // ──── Security Middleware ────
 app.use(helmet());
 app.use(cors({
-    origin: keys.NODE_ENV === 'production'
-        ? ['https://researchmind.ai']
-        : ['http://localhost:3000'],
+    origin: keys.CLIENT_URL,
     credentials: true,
 }));
 
@@ -78,8 +78,9 @@ const PORT = keys.PORT;
 const startServer = async () => {
     try {
         await connectDB();
-        app.listen(PORT, () => {
-            console.log(`
+        await connectRedis();
+        const server = app.listen(PORT, '0.0.0.0', () => {
+            logger.info(`
   ╔═══════════════════════════════════════════╗
   ║                                           ║
   ║   🧠 ResearchMind AI Server              ║
@@ -91,8 +92,13 @@ const startServer = async () => {
   ╚═══════════════════════════════════════════╝
       `);
         });
+        
+        // Fix for Next.js API proxy Socket Hang up (ECONNRESET)
+        // Ensure Node's keepAliveTimeout is larger than Next's proxy timeout
+        server.keepAliveTimeout = 120 * 1000;
+        server.headersTimeout = 120 * 1000;
     } catch (error) {
-        console.error('Failed to start server:', error);
+        logger.error('Failed to start server:', error);
         process.exit(1);
     }
 };

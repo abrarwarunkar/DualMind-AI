@@ -52,8 +52,8 @@ DualMind is a **dual-LLM research platform** that queries two different AI model
 │                  │   • Hallucination Engine       │
 │                  │   • Export (PDF/MD)            │
 ├──────────────────┴──────────────────────────────┤
-│              MongoDB (Atlas / Local)             │
-│       Users │ ResearchSessions                  │
+│                Supabase (PostgreSQL)            │
+│  Users | Sessions | Notes | Knowledge Graph     │
 ├─────────────────────────────────────────────────┤
 │          External APIs                          │
 │   Groq │ arXiv │ Semantic Scholar │ SerpAPI     │
@@ -67,7 +67,7 @@ DualMind is a **dual-LLM research platform** that queries two different AI model
 ### Prerequisites
 
 - Node.js ≥ 20
-- MongoDB (local or Atlas)
+- Supabase project (for Postgres DB and Auth)
 - Groq API key ([console.groq.com](https://console.groq.com))
 
 ### 1. Clone & Configure
@@ -76,7 +76,8 @@ DualMind is a **dual-LLM research platform** that queries two different AI model
 git clone https://github.com/abrarwarunkar/DualMind-AI.git
 cd DualMind-AI
 cp .env.example .env
-# Edit .env with your Groq API key and MongoDB URI
+# Edit .env with your Groq API key and Supabase URL / Service Key
+# Run the `server/supabase-schema.sql` in your Supabase SQL Editor
 ```
 
 ### 2. Install & Run Backend
@@ -123,7 +124,8 @@ Navigate to `http://localhost:3000` — register an account and start researchin
 # Server
 NODE_ENV=development
 PORT=5000
-MONGODB_URI=mongodb://localhost:27017/dualmind
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SERVICE_KEY=your-service-key
 JWT_SECRET=your-secret-key
 JWT_EXPIRE=7d
 
@@ -193,7 +195,7 @@ MIT License — see [LICENSE](LICENSE) for details.
 
 <div align="center">
 
-**Built with ❤️ using Llama 3.3 70B, GPT-OSS 120B, Groq, Next.js, Express, and MongoDB**
+**Built with ❤️ using Llama 3.3 70B, GPT-OSS 120B, Groq, Next.js, Express, and Supabase**
 
 *Two Minds. One Truth.*
 
