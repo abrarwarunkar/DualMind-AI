@@ -1,7 +1,5 @@
 import './globals.css';
-import { AuthProvider } from '../context/AuthContext';
-import Navbar from '../components/Navbar';
-import { Suspense } from 'react';
+import Providers from './Providers';
 
 export const metadata = {
     title: 'DualMind — Two Minds. One Truth.',
@@ -10,26 +8,13 @@ export const metadata = {
     keywords: 'DualMind, AI research, dual LLM, Groq, Llama, GPT-OSS, knowledge graph, research assistant, academic papers, arXiv',
 };
 
-function LoadingFallback() {
-    return (
-        <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <div className="spinner"></div>
-        </div>
-    );
-}
-
 export default function RootLayout({ children }) {
     return (
         <html lang="en" data-theme="dark" suppressHydrationWarning>
             <body>
-                <AuthProvider>
-                    <Navbar />
-                    <main>
-                        <Suspense fallback={<LoadingFallback />}>
-                            {children}
-                        </Suspense>
-                    </main>
-                </AuthProvider>
+                <Providers>
+                    {children}
+                </Providers>
             </body>
         </html>
     );
