@@ -1,8 +1,37 @@
+# Dependencies
 node_modules/
+server/node_modules/
+client/node_modules/
+
+# Environment (ensitive)
 .env
-*.log
-dist/
+.env.local
+.env.*.local
+
+# Build outputs
 .next/
+out/
+dist/
+
+# Test coverage
 coverage/
+.nyc_output/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
 .DS_Store
+Thumbs.db
+
+# Misc
+*.log
+logs/
+tmp/
+temp/
+
+# Gemini
 .gemini/

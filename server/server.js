@@ -9,6 +9,7 @@ const logger = require('./utils/logger');
 const keys = require('./config/keys');
 const { generalLimiter } = require('./middleware/rateLimiter');
 const errorHandler = require('./middleware/errorHandler');
+const requestIdMiddleware = require('./middleware/requestId');
 
 // Route imports
 const authRoutes = require('./routes/auth');
@@ -21,15 +22,28 @@ const knowledgeGraphRoutes = require('./routes/knowledgeGraph');
 const app = express();
 
 // ──── Security Middleware ────
-app.use(helmet());
+app.use(helmet({
+    contentSecurityPolicy: {
+        directives: {
+            defaultSrc: ['\'self\''],
+            styleSrc: ['\'self\'', '\'unsafe-inline\''],
+            scriptSrc: ['\'self\''],
+            imgSrc: ['\'self\'', 'data:', 'https:'],
+        },
+    },
+    crossOriginEmbedderPolicy: false,
+}));
 app.use(cors({
     origin: keys.CLIENT_URL,
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 
 // ──── Core Middleware ────
+app.use(requestIdMiddleware);
 app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(compression());
 app.use(generalLimiter);
 
@@ -37,7 +51,11 @@ app.use(generalLimiter);
 if (keys.NODE_ENV === 'development') {
     app.use(morgan('dev'));
 } else {
-    app.use(morgan('combined'));
+    app.use(morgan('combined', {
+        stream: {
+            write: (message) => logger.http(message.trim()),
+        },
+    }));
 }
 
 // ──── Health Check ────
@@ -66,11 +84,37 @@ app.use((req, res) => {
     res.status(404).json({
         success: false,
         error: `Route ${req.method} ${req.originalUrl} not found`,
+        requestId: req.requestId,
     });
 });
 
 // ──── Error Handler ────
 app.use(errorHandler);
+
+// ──── Graceful Shutdown ────
+const gracefulShutdown = async (signal) => {
+    logger.info(`${signal} received, shutting down gracefully...`);
+
+    const closeConnections = async () => {
+        try {
+            const { redisClient } = require('./config/redis');
+            if (redisClient.isOpen) {
+                await redisClient.quit();
+                logger.info('Redis connection closed');
+            }
+        } catch (err) {
+            logger.error('Error closing Redis:', err.message);
+        }
+    };
+
+    await closeConnections();
+
+    logger.info('Graceful shutdown complete');
+    process.exit(0);
+};
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
 // ──── Start Server ────
 const PORT = keys.PORT;
@@ -79,6 +123,7 @@ const startServer = async () => {
     try {
         await connectDB();
         await connectRedis();
+
         const server = app.listen(PORT, '0.0.0.0', () => {
             logger.info(`
   ╔═══════════════════════════════════════════╗
@@ -90,15 +135,24 @@ const startServer = async () => {
   ║   Status:      Running ✅                ║
   ║                                           ║
   ╚═══════════════════════════════════════════╝
-      `);
+            `);
         });
-        
-        // Fix for Next.js API proxy Socket Hang up (ECONNRESET)
-        // Ensure Node's keepAliveTimeout is larger than Next's proxy timeout
+
         server.keepAliveTimeout = 120 * 1000;
         server.headersTimeout = 120 * 1000;
+
+        // Handle uncaught exceptions
+        process.on('uncaughtException', (err) => {
+            logger.error('Uncaught Exception:', { message: err.message, stack: err.stack });
+            process.exit(1);
+        });
+
+        process.on('unhandledRejection', (reason, promise) => {
+            logger.error('Unhandled Rejection at:', promise, 'reason:', reason);
+        });
+
     } catch (error) {
-        logger.error('Failed to start server:', error);
+        logger.error('Failed to start server:', { message: error.message, stack: error.stack });
         process.exit(1);
     }
 };

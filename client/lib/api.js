@@ -2,24 +2,25 @@ import axios from 'axios';
 
 const api = axios.create({
     baseURL: '/api',
-    timeout: 120000, // 2 min for AI queries
+    timeout: 120000,
     headers: {
         'Content-Type': 'application/json',
     },
 });
 
-// Attach JWT token to every request
-api.interceptors.request.use((config) => {
-    if (typeof window !== 'undefined') {
-        const token = localStorage.getItem('researchmind_token');
-        if (token) {
-            config.headers.Authorization = `Bearer ${token}`;
+api.interceptors.request.use(
+    (config) => {
+        if (typeof window !== 'undefined') {
+            const token = localStorage.getItem('researchmind_token');
+            if (token) {
+                config.headers.Authorization = `Bearer ${token}`;
+            }
         }
-    }
-    return config;
-});
+        return config;
+    },
+    (error) => Promise.reject(error)
+);
 
-// Handle auth errors globally
 api.interceptors.response.use(
     (response) => response,
     (error) => {
@@ -31,6 +32,9 @@ api.interceptors.response.use(
                     window.location.href = '/login';
                 }
             }
+        }
+        if (error.code === 'ECONNABORTED') {
+            console.error('Request timeout - please try again');
         }
         return Promise.reject(error);
     }
