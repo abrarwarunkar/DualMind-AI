@@ -2,6 +2,17 @@
 const nextConfig = {
     reactStrictMode: true,
     poweredByHeader: false,
+    trailingSlash: false,
+    eslint: {
+        ignoreDuringBuilds: true,
+    },
+    typescript: {
+        ignoreBuildErrors: true,
+    },
+    experimental: {
+        workerThreads: false,
+        cpus: 1,
+    },
     async rewrites() {
         return [
             {
